@@ -25,8 +25,16 @@ plot(ord,type="t")
 ord.fit <- envfit(ord~ele+top, data=ath_sumr, perm=999)
 plot(ord.fit)
 
+
 cca_ord <- cca(ord_frame ~ ele+top, data=ath_sumr)
-plot(cca_ord)
+plot(cca_ord,scaling=3)
+
+head(summary(cca_ord),3)
+anova(cca_ord)
+anova(cca_ord,by="terms")
+anova(cca_ord,by="axis")
+
+
 # Variables to summarize;
 # Elevation
 # top_range
