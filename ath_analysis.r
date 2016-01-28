@@ -26,7 +26,7 @@ ath_wha = gs_read(ath_sheet,3)
 ath_tasveg = gs_read(ath_sheet,4)
 
 
-an = "Athrotaxis"
+an = "Diselma"
 #an = "Diselma"
 
 # Perform analysis function
@@ -89,7 +89,9 @@ env_frame$NothoPresent = factor(env_frame$NothoPresent,levels=c(0,1),c("-","+"))
 
 # Perform CCA (Constrained Correspondence Analysis) with all environmental variables
 # on the species ordination frame
-cca_ord <- cca(ord_frame ~ ele+top+FKPencilWithin+FProtected+FKillAnyAdjacent+Expansion+NothoPresent, data=env_frame)
+#cca_ord <- cca(ord_frame ~ ele+top+FKPencilWithin+FProtected+FKillAnyAdjacent+Expansion+NothoPresent, data=env_frame)
+cca_ord <- cca(ord_frame ~ ele+top, data=env_frame)
+
 
 # Plot the ordination
 plot(cca_ord,scaling=3,main=an)
