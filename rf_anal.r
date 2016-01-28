@@ -1,6 +1,11 @@
+## Simplified rainforest ordination
 library(googlesheets,quietly = TRUE,warn.conflicts = FALSE)
 library(dplyr,quietly = TRUE,warn.conflicts = FALSE)
 library(vegan,quietly = TRUE,warn.conflicts = FALSE)
+library(grDevices)
+library(sp)
+library(maptools)
+library(raster)
 
 # Authenticate with Google Drive
 gs_auth()
@@ -41,20 +46,37 @@ if(an=="Athrotaxis"){
 ath_g = group_by(ath_main,Location)
 ath_sumr = summarize(ath_g,ele=mean(Elevation),top=mean(top_range))
 
+# Get bioclim data
+ath_loc = summarize(ath_g,lat=mean(Latitude),lon=mean(Longitude))
+ath_loc2 = data.frame(ath_loc)
+coordinates(ath_loc2)=c("lon","lat")
+
+MATr = raster("E:\\geodata\\bio_30s_esri\\bio\\bio_1")
+MAPr = raster("E:\\geodata\\bio_30s_esri\\bio\\bio_12")
+MAXTr = raster("E:\\geodata\\bio_30s_esri\\bio\\bio_5")
+
+MATv = extract(MATr,ath_loc2)/10
+MAPv = extract(MAPr,ath_loc2)
+MAXTv = extract(MAXTr,ath_loc2)/10
+
+ath_loc$MAT = MATv
+ath_loc$MAP = MAPv
+ath_loc$MAXT = MAXTv
+
+ath_loc$lat = NULL
+ath_loc$lon = NULL
 # Isolate the variables of interest from the fire effect sheet, join them to the location sheet
-fire_main = select(fire_main,Location,FKPencilWithin,FKillAnyAdjacent,FProtected,Expansion,NothoPresent)
-ath_sumr2 = left_join(ath_sumr,fire_main)
-ath_sumr <- ath_sumr2
 
 # Join this sheet to the x-tab surrounding vegetation sheet
 comb_frame = left_join(ath_xtab,ath_sumr)
-
+comb_frame = subset(comb_frame,!is.na(ele))
+comb_frame = left_join(comb_frame,ath_loc)
 # Remove any locations that are missing fire data
-comb_frame = filter(comb_frame,!is.na(FKillAnyAdjacent))
+
 
 # Separate out into an ordination frame and an environmental frame, keep locations as row names
 ord_frame <- comb_frame[,3:66]
-env_frame <- comb_frame[,67:73]
+env_frame <- comb_frame[,67:71]
 rownames(ord_frame) <- comb_frame$Location
 rownames(env_frame) <- comb_frame$Location
 
@@ -76,24 +98,22 @@ for(i in seq_along(uvlist)){
   ord_frame2[,this_group]=sub_sum
 }
 ord_frame<-ord_frame2
-
-# Simplify the NothoPresent variable to binary
-env_frame$NothoPresent[env_frame$NothoPresent==0.5]=1
-
-# Convert the environmental variables to factors
-env_frame$FProtected = factor(env_frame$FProtected,levels=c(0,1),labels=c("-","+"))
-env_frame$FKPencilWithin = factor(env_frame$FKPencilWithin,levels=c(0,1),c("-","+"))
-env_frame$FKillAnyAdjacent = factor(env_frame$FKillAnyAdjacent,levels=c(0,1),c("-","+"))
-env_frame$Expansion = factor(env_frame$Expansion,levels=c(0,1),c("-","+"))
-env_frame$NothoPresent = factor(env_frame$NothoPresent,levels=c(0,1),c("-","+"))
+rainforest <- ord_frame[,8]
+#ord_frame <- ord_frame[,-8]
 
 # Perform CCA (Constrained Correspondence Analysis) with all environmental variables
 # on the species ordination frame
 #cca_ord <- cca(ord_frame ~ ele+top+FKPencilWithin+FProtected+FKillAnyAdjacent+Expansion+NothoPresent, data=env_frame)
-cca_ord <- cca(ord_frame ~ ele+top, data=env_frame)
+cca_ord <- cca(ord_frame ~ ele+top+MAT+MAP+MAXT, data=env_frame)
 
 
 # Plot the ordination
+palette(colorRampPalette(c("#FF0000","#00FF00"))(40))
+plot(cca_ord,type="none",main=an,scaling=3)
+text(cca_ord,col = rainforest+1,scaling=3)
+points(cca_ord,display="bp",scaling=3)
+text(cca_ord,display="bp",scaling=3)
+
 plot(cca_ord,scaling=3,main=an)
 
 #head(summary(cca_ord),3)
